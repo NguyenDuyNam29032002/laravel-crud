@@ -29,7 +29,12 @@ class V1Service implements ShouldQueue
 
     public function getAllEntity(): array|Collection
     {
-        return $this->model::query()->get();
+        $entities = $this->model::query()->get();
+        if ($this instanceof ShouldQueue) {
+            Cache::put('tags', $entities, 180);
+        }
+
+        return $entities;
     }
 
     public function storeEntity(Request $request): Model|Builder|MessageBag
