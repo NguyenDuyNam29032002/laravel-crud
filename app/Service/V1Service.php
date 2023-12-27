@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\MessageBag;
@@ -40,8 +41,9 @@ class V1Service implements ShouldQueue
             ]);
 
             if ($validator->fails()) {
-               return $validator->messages();
+                return $validator->messages();
             }
+
             return $this->model::query()->create($request->all());
         } catch (ModelNotFoundException $modelNotFoundException) {
             throw new BadRequestHttpException('Model not found', $modelNotFoundException);
@@ -57,9 +59,16 @@ class V1Service implements ShouldQueue
         }
     }
 
-    public function updateEntity(Request $request, int|string $id): Model|Collection|Builder|array|null
+    public function updateEntity(Request $request, int|string $id): Model|Collection|Builder|array|MessageBag|null
     {
         try {
+            $validator = Validator::make($request->all(), [
+                'name'        => 'sometimes|required',
+                'description' => 'max: 100'
+            ]);
+            if ($validator->fails()) {
+                return $validator->messages();
+            }
             $entity = $this->model::query()->findOrFail($id);
             $obj    = $request->all();
             DB::beginTransaction();
