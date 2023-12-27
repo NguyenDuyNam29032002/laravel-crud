@@ -1,0 +1,65 @@
+version: "3.8"
+services:
+  php:
+    container_name: php
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+    expose:
+      - 9000
+    volumes:
+      - .:/var/www
+      - ./public:/var/www/public
+    depends_on:
+      - database
+    networks:
+      - laravel_network
+
+  nginx:
+    container_name: nginx
+    build:
+      context: .
+      dockerfile: ./docker/nginx/Dockerfile
+    volumes:
+      - ./public:/var/www/public
+    ports:
+      - "5000:80"
+    depends_on:
+      - php
+    environment:
+      NGINX_FPM_HOST: php
+      NGINX_ROOT: /var/www/public
+    networks:
+      - laravel_network
+
+  database:
+    container_name: database
+    image: mysql:8.0.31
+    restart: always
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - 3306:3306
+    command: ['mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci']
+    environment:
+      MYSQL_DATABASE: interior-db
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_PASSWORD: 123456
+    networks:
+      - laravel_network
+    hostname: 127.0.0.1
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    networks:
+      - laravel_network
+
+
+networks:
+  laravel_network:
+    driver: bridge
+
+volumes:
+  mysql-data:
