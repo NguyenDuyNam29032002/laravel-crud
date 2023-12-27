@@ -31,7 +31,7 @@ class V1Service implements ShouldQueue
     {
         $entities = $this->model::query()->get();
         if ($this instanceof ShouldQueue) {
-            Cache::put('tags', $entities, 180);
+            Cache::put('index: ', $entities, 180);
         }
 
         return $entities;
@@ -41,12 +41,16 @@ class V1Service implements ShouldQueue
     {
         try {
             $validator = Validator::make($request->all(), [
-                'name'        => 'required|unique:v1_s,name|min:6|regex:/^[a-zA-Z0-9]+$/u',
+                'name'        => 'required|unique:v1_s,name|min:6',
                 'description' => 'max:100'
             ]);
 
             if ($validator->fails()) {
                 return $validator->messages();
+            }
+
+            if ($this instanceof ShouldQueue) {
+                Cache::put('store: ', $request->all(), 180);
             }
 
             return $this->model::query()->create($request->all());
@@ -58,7 +62,11 @@ class V1Service implements ShouldQueue
     public function getDetailEntity(int|string $id): Model|Collection|Builder|array|null
     {
         try {
-            return $this->model::query()->findOrFail($id);
+            $entity =  $this->model::query()->findOrFail($id);
+            if ($this instanceof ShouldQueue){
+                Cache::put('show: ', $entity, 180);
+            }
+            return $entity;
         } catch (ModelNotFoundException $modelNotFoundException) {
             throw new BadRequestHttpException('Model not found', $modelNotFoundException);
         }
@@ -80,6 +88,9 @@ class V1Service implements ShouldQueue
             $entity->update($obj);
             $entity->save();
             DB::commit();
+            if ($this instanceof ShouldQueue){
+                Cache::put('update', $obj, 180);
+            }
 
             return $entity;
         } catch (ModelNotFoundException $exception) {
