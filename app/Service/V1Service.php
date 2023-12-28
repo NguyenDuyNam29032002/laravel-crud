@@ -12,19 +12,25 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\MessageBag;
+use Ramsey\Uuid\Uuid;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class V1Service implements ShouldQueue
 {
     private Model|V1 $model;
     private ?string  $alias;
+    protected string $table;
+    private string   $driver;
 
     public function __construct(?Model $model = null, ?string $alias = null)
     {
-        $this->model = $model ?: new V1();
-        $this->alias = $alias;
+        $this->model  = $model ?: new V1();
+        $this->alias  = $alias;
+        $this->driver = $this->model->getConnection()->getDriverName();
+        $this->table  = $this->model->getTable();
     }
 
     public function getAllEntity(): array|Collection
@@ -52,6 +58,11 @@ class V1Service implements ShouldQueue
             if ($this instanceof ShouldQueue) {
                 Cache::put('store: ', $request->all(), 180);
             }
+            // if using mysql, with table has uuid column, then Set uuid
+            if (!str_contains($this->driver, 'mysql')
+                || Schema::connection($this->model->getConnectionName())->hasColumn($this->table, 'uuid')) {
+                $request->merge(['uuid' => Uuid::uuid4()]);
+            }
 
             return $this->model::query()->create($request->all());
         } catch (ModelNotFoundException $modelNotFoundException) {
@@ -62,10 +73,11 @@ class V1Service implements ShouldQueue
     public function getDetailEntity(int|string $id): Model|Collection|Builder|array|null
     {
         try {
-            $entity =  $this->model::query()->findOrFail($id);
-            if ($this instanceof ShouldQueue){
+            $entity = $this->model::query()->findOrFail($id);
+            if ($this instanceof ShouldQueue) {
                 Cache::put('show: ', $entity, 180);
             }
+
             return $entity;
         } catch (ModelNotFoundException $modelNotFoundException) {
             throw new BadRequestHttpException('Model not found', $modelNotFoundException);
@@ -86,9 +98,8 @@ class V1Service implements ShouldQueue
             $obj    = $request->all();
             DB::beginTransaction();
             $entity->update($obj);
-            $entity->save();
             DB::commit();
-            if ($this instanceof ShouldQueue){
+            if ($this instanceof ShouldQueue) {
                 Cache::put('update', $obj, 180);
             }
 
