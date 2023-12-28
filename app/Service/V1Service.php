@@ -97,7 +97,8 @@ class V1Service implements ShouldQueue
             $entity = $this->model::query()->findOrFail($id);
             $obj    = $request->all();
             DB::beginTransaction();
-            $entity->update($obj);
+            unset($request['uuid']);
+            $request->request->remove('uuid');
             DB::commit();
             if ($this instanceof ShouldQueue) {
                 Cache::put('update', $obj, 180);
