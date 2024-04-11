@@ -33,10 +33,10 @@ class V1Controller extends Controller implements ShouldQueue
     }
     public function update(Request $request, int|string $id): JsonResponse
     {
-        return \response()->json($this->v1Service->updateEntity($request, $id))->setStatusCode(Response::HTTP_OK);
+        return response()->json($this->v1Service->updateEntity($request, $id))->setStatusCode(Response::HTTP_OK);
     }
     public function delete(int|string $id): JsonResponse
     {
-        return \response()->json($this->v1Service->deleteEntity($id))->setStatusCode(Response::HTTP_NO_CONTENT);
+        return response()->json($this->v1Service->deleteEntity($id))->setStatusCode(Response::HTTP_NO_CONTENT);
     }
 }

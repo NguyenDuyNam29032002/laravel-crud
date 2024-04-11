@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Models\V1;
+use App\Traits\HasRequest;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -18,8 +19,10 @@ use Illuminate\Support\MessageBag;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
-class V1Service implements ShouldQueue
+class V1Service
 {
+    use HasRequest;
+
     private Model|V1 $model;
     private ?string  $alias;
     protected string $table;
@@ -45,29 +48,27 @@ class V1Service implements ShouldQueue
 
     public function storeEntity(Request $request): Model|Builder|MessageBag
     {
-        try {
-            $validator = Validator::make($request->all(), [
-                'name'        => 'required|unique:v1_s,name|min:6',
-                'description' => 'max:100'
-            ]);
+        $validator = Validator::make($request->all(), [
+            'name'        => 'required|unique:v1_s,name|min:6',
+            'description' => 'max:100'
+        ]);
 
-            if ($validator->fails()) {
-                return $validator->messages();
-            }
-
-            if ($this instanceof ShouldQueue) {
-                Cache::put('store: ', $request->all(), 180);
-            }
-            // if using mysql, with table has uuid column, then Set uuid
-            if (!str_contains($this->driver, 'mysql')
-                || Schema::connection($this->model->getConnectionName())->hasColumn($this->table, 'uuid')) {
-                $request->merge(['uuid' => Uuid::uuid4()]);
-            }
-
-            return $this->model::query()->create($request->all());
-        } catch (ModelNotFoundException $modelNotFoundException) {
-            throw new BadRequestHttpException('Model not found', $modelNotFoundException);
+        if ($validator->fails()) {
+            return $validator->messages();
         }
+
+        if ($this instanceof ShouldQueue) {
+            Cache::put('store: ', $request->all(), 180);
+        }
+
+        if (
+            !str_contains($this->driver, 'mysql')
+            || Schema::connection($this->model->getConnectionName())->hasColumn($this->table, 'uuid')
+        ) {
+            $request->merge(['uuid' => Uuid::uuid4()]);
+        }
+
+        return $this->model::query()->create($request->all());
     }
 
     public function getDetailEntity(int|string $id): Model|Collection|Builder|array|null
@@ -84,24 +85,31 @@ class V1Service implements ShouldQueue
         }
     }
 
-    public function updateEntity(Request $request, int|string $id): Model|Collection|Builder|array|MessageBag|null
+    /**
+     * @throws BadRequestException
+     */
+    public function updateEntity(object $request, int|string $id): Model|Collection|Builder|array|MessageBag|null
     {
         try {
             $validator = Validator::make($request->all(), [
                 'name'        => 'sometimes|required',
-                'description' => 'max: 100'
+                'description' => 'max:100'
             ]);
             if ($validator->fails()) {
-                return $validator->messages();
+                return $validator->errors()->toArray();
             }
-            $entity = $this->model::query()->findOrFail($id);
-            $obj    = $request->all();
+
             DB::beginTransaction();
-            unset($request['uuid']);
-            $request->request->remove('uuid');
+
+            $entity = $this->model::query()->findOrFail($id);
+            $this->removeRequestParams($request, ['uuid']);
+
+            $entity->update($request->all());
+
             DB::commit();
+
             if ($this instanceof ShouldQueue) {
-                Cache::put('update', $obj, 180);
+                Cache::put('update', $request->all(), 180);
             }
 
             return $entity;
