@@ -11,5 +11,5 @@ class V1 extends Model
     use HasFactory, SoftDeletes;
 
     protected $table    = 'v1_s';
-    protected $fillable = ['name', 'description', 'uuid'];
+    protected $fillable = ['name', 'description', 'uuid', 'type'];
 }

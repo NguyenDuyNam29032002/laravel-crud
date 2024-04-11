@@ -38,9 +38,8 @@ trait HasRequest
 
     public function mergeRequestParams(object $request, array $params): object
     {
-        $isHTTPRequest = $request instanceof Request;
 
-        if ($isHTTPRequest) {
+        if ($request instanceof Request) {
             $request->merge($params);
         }
         else {

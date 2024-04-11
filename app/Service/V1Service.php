@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Enums\TypeEnums;
 use App\Models\V1;
 use App\Traits\HasRequest;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -10,7 +11,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -19,7 +19,7 @@ use Illuminate\Support\MessageBag;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
-class V1Service
+class V1Service implements ShouldQueue
 {
     use HasRequest;
 
@@ -46,13 +46,14 @@ class V1Service
         return $entities;
     }
 
-    public function storeEntity(Request $request): Model|Builder|MessageBag
+    public function storeEntity(object $request): Model|Builder|MessageBag
     {
         $validator = Validator::make($request->all(), [
             'name'        => 'required|unique:v1_s,name|min:6',
-            'description' => 'max:100'
+            'description' => 'max:100',
+            'type'        => 'in:' . implode(',', TypeEnums::toArray())
         ]);
-
+        $this->mergeRequestParams($request, ['type' => TypeEnums::CREATE->value]);
         if ($validator->fails()) {
             return $validator->messages();
         }
@@ -85,9 +86,6 @@ class V1Service
         }
     }
 
-    /**
-     * @throws BadRequestException
-     */
     public function updateEntity(object $request, int|string $id): Model|Collection|Builder|array|MessageBag|null
     {
         try {
@@ -95,6 +93,8 @@ class V1Service
                 'name'        => 'sometimes|required',
                 'description' => 'max:100'
             ]);
+
+            $this->mergeRequestParams($request, ['type' => TypeEnums::UPDATE->value]);
             if ($validator->fails()) {
                 return $validator->errors()->toArray();
             }
