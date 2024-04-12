@@ -42,6 +42,6 @@ class V1Controller extends Controller implements ShouldQueue
 
     public function deleteByIds(Request $request)
     {
-        return response()->json($this->v1Service->deleteByIds($request))->setStatusCode(Response::HTTP_NO_CONTENT);
+        return response()->json($this->v1Service->deleteByIds($request));
     }
 }

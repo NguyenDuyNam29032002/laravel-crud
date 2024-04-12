@@ -147,12 +147,16 @@ class V1Service implements ShouldQueue
 
     public function deleteByIds(object $request)
     {
-        $validator = Validator::make($request->ids, ['ids' => 'exists:v1_s,id,deleted_at,NULL|array']);
+        $validator = Validator::make($request->all(), [
+            'ids' => 'required|array',
+            'ids.*' => 'exists:v1_s,id,deleted_at,NULL'
+        ]);
         if ($validator->fails()) {
-            throw new ModelNotFoundException('some model not found');
+            return $validator->messages();
+
         }
 
         $this->model::query()->whereIn('id', $request->ids)->delete();
-        return true;
+        return 'true';
     }
 }
