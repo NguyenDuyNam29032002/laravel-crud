@@ -24,21 +24,24 @@ class V1Service implements ShouldQueue
     use HasRequest;
 
     private Model|V1 $model;
-    private ?string  $alias;
+    private ?string $alias;
     protected string $table;
-    private string   $driver;
+    private string $driver;
+
+    protected Builder $builder;
 
     public function __construct(?Model $model = null, ?string $alias = null)
     {
-        $this->model  = $model ?: new V1();
-        $this->alias  = $alias;
+        $this->model = $model ?: new V1();
+        $this->alias = $alias;
         $this->driver = $this->model->getConnection()->getDriverName();
-        $this->table  = $this->model->getTable();
+        $this->table = $this->model->getTable();
     }
 
-    public function getAllEntity(): array|Collection
+    public function getAllEntity()
     {
-        $entities = $this->model::query()->get();
+        $limit = request('limit');
+        $entities = $this->model::query()->paginate($limit);
         if ($this instanceof ShouldQueue) {
             Cache::put('index: ', $entities, 180);
         }
@@ -49,9 +52,9 @@ class V1Service implements ShouldQueue
     public function storeEntity(object $request): Model|Builder|MessageBag
     {
         $validator = Validator::make($request->all(), [
-            'name'        => 'required|unique:v1_s,name|min:6',
+            'name' => 'required|unique:v1_s,name|min:6',
             'description' => 'max:100',
-            'type'        => 'in:' . implode(',', TypeEnums::toArray())
+            'type' => 'in:' . implode(',', TypeEnums::toArray())
         ]);
         $this->mergeRequestParams($request, ['type' => TypeEnums::CREATE->value]);
         if ($validator->fails()) {
@@ -90,7 +93,7 @@ class V1Service implements ShouldQueue
     {
         try {
             $validator = Validator::make($request->all(), [
-                'name'        => 'sometimes|required',
+                'name' => 'sometimes|required',
                 'description' => 'max:100'
             ]);
 
