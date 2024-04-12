@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\MessageBag;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class V1Service implements ShouldQueue
 {
@@ -36,12 +37,20 @@ class V1Service implements ShouldQueue
         $this->alias = $alias;
         $this->driver = $this->model->getConnection()->getDriverName();
         $this->table = $this->model->getTable();
+        $this->builder = $this->model->newQuery();
     }
 
-    public function getAllEntity()
+    public function getAllEntity($paginated = true)
     {
         $limit = request('limit');
-        $entities = $this->model::query()->paginate($limit);
+        $paginated = request()->boolean('paginate', $paginated);
+        $names = request('name');
+
+        $this->builder->when($names, function (Builder $builder) use ($names) {
+            $builder->where('name', 'like', '%' . $names . '%');
+        });
+        $entities = $paginated ? $this->builder->paginate($limit) : $this->builder->get();
+
         if ($this instanceof ShouldQueue) {
             Cache::put('index: ', $entities, 180);
         }
@@ -134,5 +143,16 @@ class V1Service implements ShouldQueue
             DB::rollBack();
             throw new BadRequestHttpException('entity not found', $notFoundException);
         }
+    }
+
+    public function deleteByIds(object $request)
+    {
+        $validator = Validator::make($request->ids, ['ids' => 'exists:v1_s,id,deleted_at,NULL|array']);
+        if ($validator->fails()) {
+            throw new ModelNotFoundException('some model not found');
+        }
+
+        $this->model::query()->whereIn('id', $request->ids)->delete();
+        return true;
     }
 }

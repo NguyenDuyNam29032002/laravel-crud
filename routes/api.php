@@ -25,4 +25,5 @@ Route::prefix('v1')->group(function () {
     Route::get('/{id}/detail-entity', [V1Controller::class, 'show']);
     Route::patch('/{id}/update-entity', [V1Controller::class, 'update']);
     Route::delete('/{id}/delete-entity', [V1Controller::class, 'delete']);
+    Route::delete('delete-by-ids', [V1Controller::class, 'deleteByIds']);
 });
