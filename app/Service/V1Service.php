@@ -66,10 +66,9 @@ class V1Service implements ShouldQueue
         }
 
         if (
-            !str_contains($this->driver, 'mysql')
-            || Schema::connection($this->model->getConnectionName())->hasColumn($this->table, 'uuid')
+            !str_contains($this->driver, 'mysql') || Schema::connection($this->model->getConnectionName())->hasColumn($this->table, 'uuid')
         ) {
-            $request->merge(['uuid' => Uuid::uuid4()]);
+            $this->mergeRequestParams($request, ['uuid' => Uuid::uuid4()]);
         }
 
         return $this->model::query()->create($request->all());
