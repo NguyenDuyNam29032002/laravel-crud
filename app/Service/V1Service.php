@@ -20,7 +20,7 @@ use Ramsey\Uuid\Uuid;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
-class V1Service implements ShouldQueue
+class V1Service
 {
     use HasRequest;
 
@@ -58,7 +58,7 @@ class V1Service implements ShouldQueue
         return $entities;
     }
 
-    public function storeEntity(object $request): Model|Builder|MessageBag
+    public function storeEntity(object $request)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|unique:v1_s,name|min:6',
@@ -93,7 +93,7 @@ class V1Service implements ShouldQueue
 
             return $entity;
         } catch (ModelNotFoundException $modelNotFoundException) {
-            throw new BadRequestHttpException('Model not found', $modelNotFoundException);
+            throw new BadRequestHttpException(__('validation.before'), $modelNotFoundException);
         }
     }
 
