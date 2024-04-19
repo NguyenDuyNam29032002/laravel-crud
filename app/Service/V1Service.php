@@ -3,19 +3,24 @@
 namespace App\Service;
 
 use App\Enums\TypeEnums;
+use App\Exeptions\BadRequestException;
+use App\Exeptions\NotFoundException;
 use App\Models\V1;
 use App\Traits\HasRequest;
+use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\MessageBag;
+use Illuminate\Validation\ValidatesWhenResolvedTrait;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -124,9 +129,10 @@ class V1Service
             }
 
             return $entity;
-        } catch (ModelNotFoundException $exception) {
+        } catch (BadRequestException) {
             DB::rollBack();
-            throw new BadRequestHttpException('entity not found', $exception);
+            dd(throw new BadRequestException('entity not found'));
+            throw new BadRequestException('entity not found');
         } catch (QueryException $queryException) {
             throw new BadRequestHttpException('query failed', $queryException);
         }

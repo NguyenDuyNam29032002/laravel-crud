@@ -1,6 +1,6 @@
 <?php
 
-namespace YaangVu\LaravelBase\Exception;
+namespace App\Exeptions;
 
 use Symfony\Component\HttpFoundation\Response;
 

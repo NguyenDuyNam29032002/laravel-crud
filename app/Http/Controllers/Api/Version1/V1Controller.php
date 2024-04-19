@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
-class V1Controller extends Controller implements ShouldQueue
+class V1Controller extends Controller
 {
     public V1Service $v1Service;
     public function __construct(V1Service $v1Service)
