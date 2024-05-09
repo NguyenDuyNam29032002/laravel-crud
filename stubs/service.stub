@@ -1,0 +1,12 @@
+<?php
+
+namespace App\Services;
+
+use App\Traits\HasRequest;
+use App\Traits\Validatable;
+
+class {{class}}
+{
+    use HasRequest, Validatable;
+    //
+}

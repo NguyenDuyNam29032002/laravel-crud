@@ -1,33 +1,29 @@
 <?php
 
-namespace App\Service;
+namespace App\Services;
 
 use App\Enums\TypeEnums;
-use App\Exeptions\BadRequestException;
-use App\Exeptions\NotFoundException;
+use App\HandleException\BadRequestException;
 use App\Models\V1;
 use App\Traits\HasRequest;
-use Exception;
+use App\Traits\Validatable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\MessageBag;
-use Illuminate\Validation\ValidatesWhenResolvedTrait;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class V1Service
 {
-    use HasRequest;
+    use HasRequest, Validatable;
 
     private Model|V1 $model;
     private ?string $alias;
@@ -45,7 +41,7 @@ class V1Service
         $this->builder = $this->model->newQuery();
     }
 
-    public function getAllEntity($paginated = true)
+    public function getAllEntity($paginated = true): Collection|\Illuminate\Contracts\Pagination\LengthAwarePaginator|array
     {
         $limit = request('limit');
         $paginated = request()->boolean('paginate', $paginated);
@@ -63,7 +59,7 @@ class V1Service
         return $entities;
     }
 
-    public function storeEntity(object $request)
+    public function storeEntity(object $request): Model|Builder|MessageBag
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|unique:v1_s,name|min:6',
@@ -102,6 +98,9 @@ class V1Service
         }
     }
 
+    /**
+     * @throws BadRequestException
+     */
     public function updateEntity(object $request, int|string $id): Model|Collection|Builder|array|MessageBag|null
     {
         try {
@@ -131,7 +130,6 @@ class V1Service
             return $entity;
         } catch (BadRequestException) {
             DB::rollBack();
-            dd(throw new BadRequestException('entity not found'));
             throw new BadRequestException('entity not found');
         } catch (QueryException $queryException) {
             throw new BadRequestHttpException('query failed', $queryException);
@@ -151,7 +149,7 @@ class V1Service
         }
     }
 
-    public function deleteByIds(object $request)
+    public function deleteByIds(object $request): bool|MessageBag
     {
         $validator = Validator::make($request->all(), [
             'ids' => 'required|array',
@@ -163,6 +161,6 @@ class V1Service
         }
 
         $this->model::query()->whereIn('id', $request->ids)->delete();
-        return 'true';
+        return true;
     }
 }

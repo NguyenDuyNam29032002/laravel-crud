@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Api\Version1;
 
+use App\HandleException\BadRequestException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEntityRequest;
-use App\Service\V1Service;
+use App\Services\V1Service;
 use Couchbase\QueryException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Http\Request;
@@ -40,8 +41,16 @@ class V1Controller extends Controller
         return response()->json($this->v1Service->deleteEntity($id))->setStatusCode(Response::HTTP_NO_CONTENT);
     }
 
-    public function deleteByIds(Request $request)
+    public function deleteByIds(Request $request): \Illuminate\Http\JsonResponse
     {
         return response()->json($this->v1Service->deleteByIds($request));
+    }
+
+    /**
+     * @throws BadRequestException
+     */
+    public function test(Request $request): \Illuminate\Http\JsonResponse
+    {
+        return response()->json($this->v1Service->testTrait($request));
     }
 }
