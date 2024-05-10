@@ -45,12 +45,4 @@ class V1Controller extends Controller
     {
         return response()->json($this->v1Service->deleteByIds($request));
     }
-
-    /**
-     * @throws BadRequestException
-     */
-    public function test(Request $request): \Illuminate\Http\JsonResponse
-    {
-        return response()->json($this->v1Service->testTrait($request));
-    }
 }

@@ -20,17 +20,19 @@ Route::get('/', function () {
 Route::get('/check-database-connection', function () {
     try {
         DB::connection()->getPdo();
-        return "Connected to the database!";
+
+        return "<h1>Connected to the database!</h1>";
     } catch (\Exception $e) {
-        return "Unable to connect to the database. Error: " . $e->getMessage();
+        return "<h1>" . "Unable to connect to the database. Error: " . $e->getMessage() . "</h1>";
     }
 });
 Route::get('/check-redis-connection', function () {
     try {
-      \Illuminate\Support\Facades\Redis::connection();
-        return "Connected to Redis!";
+        \Illuminate\Support\Facades\Redis::connection();
+
+        return "<h1>" . "Connected to Redis!" . "</h1>";
     } catch (\Exception $e) {
-        return "Unable to connect to Redis. Error: " . $e->getMessage();
+        return "<h1>" . "Unable to connect to Redis. Error: " . $e->getMessage() . "</h1>";
     }
 });
 
