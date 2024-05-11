@@ -17,17 +17,25 @@ RUN apt-get update && apt-get install -y \
 
 RUN docker-php-ext-configure opcache --enable-opcache  && docker-php-ext-configure gd --with-jpeg
 
-
 RUN docker-php-ext-install pdo pdo_mysql sockets pdo_pgsql zip intl gd pgsql opcache
 RUN curl -sS https://getcomposer.org/installer | php -- \
      --install-dir=/usr/local/bin --filename=composer
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+
 # Install redis
-RUN pecl install redis \
-    && docker-php-ext-enable redis.so
+RUN apt-get update && apt-get install -y redis-server && pecl install redis && docker-php-ext-enable redis
 
 WORKDIR /app
 COPY . .
 RUN composer install
+
+
+COPY dockerize/start.sh /usr/local/bin/start.sh
+RUN chmod u+x /usr/local/bin/start.sh
+
+
+EXPOSE 8000
+
+CMD ["/usr/local/bin/start.sh"]
