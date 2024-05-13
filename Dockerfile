@@ -33,3 +33,6 @@ RUN pecl install mongodb && docker-php-ext-enable mongodb
 WORKDIR /app
 COPY . .
 RUN composer install
+
+CMD php artisan migrate --force && php artisan serve --host=0.0.0.0
+
