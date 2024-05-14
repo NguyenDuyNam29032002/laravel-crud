@@ -30,6 +30,10 @@ RUN apt-get update && apt-get install -y redis-server && pecl install redis && d
 # Install MongoDB extension
 RUN pecl install mongodb && docker-php-ext-enable mongodb
 
+#install git
+RUN apt-get update && apt-get install -y git
+
+
 WORKDIR /app
 COPY . .
 RUN composer install
