@@ -8,6 +8,7 @@ use App\HandleException\NotFoundException;
 use App\Models\V1;
 use App\Traits\HasRequest;
 use App\Traits\Validatable;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -26,32 +27,16 @@ class V1Service implements ShouldQueue
 {
     use HasRequest, Validatable;
 
-    private Model|V1 $model;
-    private ?string  $alias;
-    protected string $table;
-    private string   $driver;
-
-    protected Builder $builder;
-
-    public function __construct(?Model $model = null, ?string $alias = null)
-    {
-        $this->model   = $model ?: new V1();
-        $this->alias   = $alias;
-        $this->driver  = $this->model->getConnection()->getDriverName();
-        $this->table   = $this->model->getTable();
-        $this->builder = $this->model->newQuery();
-    }
-
-    public function getAllEntity($paginated = true): Collection|\Illuminate\Contracts\Pagination\LengthAwarePaginator|array
+    public function getAllEntity($paginated = true): Collection|LengthAwarePaginator|array
     {
         $limit     = request('limit');
         $paginated = request()->boolean('paginate', $paginated);
         $names     = request('name');
 
-        $this->builder->when($names, function (Builder $builder) use ($names) {
+        V1::query()->when($names, function (Builder $builder) use ($names) {
             $builder->where('name', 'like', '%' . $names . '%');
         });
-        $entities = $paginated ? $this->builder->paginate($limit) : $this->builder->get();
+        $entities = $paginated ? V1::query()->paginate($limit) : V1::query()->get();
         Log::info('Storing cache...');
         Cache::put('index: ', $entities->toArray(), 180);
         Log::info('cache successfully', $entities->toArray());
@@ -73,17 +58,18 @@ class V1Service implements ShouldQueue
         Log::info('Storing cache...');
         Cache::put('store: ', $request->all(), 180);
         Log::info('cache successfully', $request->all());
+        $model = new V1();
 
         if (
-            !str_contains($this->driver, 'mysql')
-            || Schema::connection($this->model->getConnectionName())->hasColumn($this->table, 'uuid')
+            !str_contains(V1::query()->getConnection()->getDriverName(), 'mysql')
+            || Schema::connection($model->getConnectionName())->hasColumn($model->getTable(), 'uuid')
         ) {
             $this->mergeRequestParams($request, ['uuid' => Uuid::uuid4()]);
         }
 
         Log::info("create $request->all() successfully");
 
-        return $this->model::query()->create($request->all());
+        return V1::query()->create($request->all());
     }
 
     /**
@@ -92,7 +78,7 @@ class V1Service implements ShouldQueue
     public function getDetailEntity(int|string $id): Model|Collection|Builder|array|null
     {
         try {
-            $entity = $this->model::query()->findOrFail($id);
+            $entity = V1::query()->findOrFail($id);
             Log::info('Storing cache...');
             Cache::put('show: ', $entity, 180);
             Log::info("cache $entity successfully");
@@ -127,7 +113,7 @@ class V1Service implements ShouldQueue
 
             DB::beginTransaction();
 
-            $entity = $this->model::query()->findOrFail($id);
+            $entity = V1::query()->findOrFail($id);
             $this->removeRequestParams($request, ['uuid']);
 
             $entity->update($request->all());
@@ -152,7 +138,7 @@ class V1Service implements ShouldQueue
     public function deleteEntity(int|string $id): void
     {
         try {
-            $entity = $this->model::query()->findOrFail($id);
+            $entity = V1::query()->findOrFail($id);
             DB::beginTransaction();
             $entity->delete();
             DB::commit();
@@ -172,7 +158,7 @@ class V1Service implements ShouldQueue
             return $validator->messages();
         }
 
-        $this->model::query()->whereIn('id', $request->ids)->delete();
+        V1::query()->whereIn('id', $request->ids)->delete();
 
         return true;
     }
