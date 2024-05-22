@@ -2,16 +2,15 @@
 
 namespace App\Services;
 
+use App\Contract\BaseContract;
 use App\Enums\TypeEnums;
 use App\HandleException\BadRequestException;
 use App\HandleException\NotFoundException;
 use App\Models\V1;
 use App\Traits\HasRequest;
 use App\Traits\Validatable;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
@@ -19,14 +18,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\MessageBag;
 use Ramsey\Uuid\Uuid;
 
-class V1Service implements ShouldQueue
+class V1Service implements ShouldQueue, BaseContract
 {
     use HasRequest, Validatable;
 
-    public function getAllEntity($paginated = true): Collection|LengthAwarePaginator|array
+    public function getAllEntity($paginated = true): \Illuminate\Support\Collection|\Illuminate\Pagination\LengthAwarePaginator
     {
         $limit     = request('limit');
         $paginated = request()->boolean('paginate', $paginated);
@@ -43,7 +41,7 @@ class V1Service implements ShouldQueue
         return $entities;
     }
 
-    public function storeEntity(object $request): Model|Builder|MessageBag
+    public function storeEntity(object $request): Model
     {
         $validator = Validator::make($request->all(), [
             'name'        => 'required|unique:v1_s,name|min:6',
@@ -52,7 +50,7 @@ class V1Service implements ShouldQueue
         ]);
         $this->mergeRequestParams($request, ['type' => TypeEnums::CREATE->value]);
         if ($validator->fails()) {
-            return $validator->messages();
+            throw new BadRequestException("request is invalid");
         }
         Log::info('Storing cache...');
         Cache::put('store: ', $request->all(), 180);
@@ -74,7 +72,7 @@ class V1Service implements ShouldQueue
     /**
      * @throws NotFoundException
      */
-    public function getDetailEntity(int|string $id): Model|Collection|Builder|array|null
+    public function getDetailEntity(int|string $id): Model
     {
         try {
             $entity = V1::query()->findOrFail($id);
@@ -94,11 +92,11 @@ class V1Service implements ShouldQueue
      * @param object     $request
      * @param int|string $id
      *
-     * @return Model|Collection|Builder|array|MessageBag|null
+     * @return Model
      * @throws BadRequestException
      * @throws \App\HandleException\QueryException
      */
-    public function updateEntity(object $request, int|string $id): Model|Collection|Builder|array|MessageBag|null
+    public function updateEntity(int|string $id, object $request): Model
     {
         try {
             $validator = Validator::make($request->all(), [
@@ -108,7 +106,7 @@ class V1Service implements ShouldQueue
 
             $this->mergeRequestParams($request, ['type' => TypeEnums::UPDATE->value]);
             if ($validator->fails()) {
-                return $validator->errors()->toArray();
+                throw new BadRequestException("request is invalid");
             }
 
             DB::beginTransaction();
@@ -135,27 +133,29 @@ class V1Service implements ShouldQueue
     /**
      * @throws \App\HandleException\QueryException
      */
-    public function deleteEntity(int|string $id): void
+    public function deleteEntity(int|string $id): bool
     {
         try {
             $entity = V1::query()->findOrFail($id);
             DB::beginTransaction();
             $entity->delete();
             DB::commit();
+
+            return true;
         } catch (QueryException $queryException) {
             DB::rollBack();
             throw new \App\HandleException\QueryException(message: 'entity not found', previous: $queryException);
         }
     }
 
-    public function deleteByIds(object $request): bool|MessageBag
+    public function deleteByIds(object $request): bool
     {
         $validator = Validator::make($request->all(), [
             'ids'   => 'required|array',
             'ids.*' => 'exists:v1_s,id,deleted_at,NULL'
         ]);
         if ($validator->fails()) {
-            return $validator->messages();
+            throw new NotFoundException("Id is invalid");
         }
 
         V1::query()->whereIn('id', $request->ids)->delete();
