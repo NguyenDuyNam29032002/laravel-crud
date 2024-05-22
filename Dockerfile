@@ -1,4 +1,4 @@
-FROM php:8.1-fpm
+FROM php:8.2-fpm
 
 LABEL builder="I love you so muchh"
 
@@ -13,7 +13,17 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     zlib1g-dev \
     ffmpeg \
-    curl
+    curl \
+    libfreetype-dev \
+    libjpeg62-turbo-dev \
+    unzip \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) gd
+# Set the working directory
+COPY . /var/www/app
+WORKDIR /var/www/app
+RUN chown -R www-data:www-data /var/www/app \
+    && chmod -R 775 /var/www/app/storage
 
 RUN docker-php-ext-configure opcache --enable-opcache  && docker-php-ext-configure gd --with-jpeg
 
@@ -34,9 +44,7 @@ RUN pecl install mongodb && docker-php-ext-enable mongodb
 RUN apt-get update && apt-get install -y git
 
 
-WORKDIR /app
-COPY . .
 RUN composer install
 
-CMD php artisan migrate --force && php artisan serve --host=0.0.0.0
+CMD php artisan serve --host=0.0.0.0 && php artisan migrate
 

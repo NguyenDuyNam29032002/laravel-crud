@@ -21,7 +21,6 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\MessageBag;
 use Ramsey\Uuid\Uuid;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class V1Service implements ShouldQueue
 {
@@ -97,6 +96,7 @@ class V1Service implements ShouldQueue
      *
      * @return Model|Collection|Builder|array|MessageBag|null
      * @throws BadRequestException
+     * @throws \App\HandleException\QueryException
      */
     public function updateEntity(object $request, int|string $id): Model|Collection|Builder|array|MessageBag|null
     {
@@ -128,7 +128,7 @@ class V1Service implements ShouldQueue
             DB::rollBack();
             throw new BadRequestException('entity not found');
         } catch (QueryException $queryException) {
-            throw new BadRequestHttpException('query failed', $queryException);
+            throw new \App\HandleException\QueryException(message: 'query failed', previous: $queryException);
         }
     }
 
